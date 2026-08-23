@@ -4,7 +4,6 @@ import "core:sort"
 import "core:time"
 import "core:math/rand"
 import "core:slice"
-import "base:runtime"
 import "base:intrinsics"
 import "core:fmt"
 
@@ -16,6 +15,8 @@ main :: proc() {
 	arr := make([]f32, 100)
 
 	sort.sort_inlined(arr)
+
+	slice.sort(arr)
 	fmt.println(arr[:1])
 
 
@@ -51,6 +52,11 @@ main :: proc() {
 	for i :i64= 10; i <= 1_00_000; i *= 10 {
 		test_indices_by(i)
 	}
+	fmt.println()
+	fmt.println("test_random(int)")
+	for i :i64= 10; i <= 10_000_000; i *= 10 {
+		test_random(i)
+	}
 
 
 }
@@ -65,18 +71,21 @@ test_inplace_big:: proc($size: int) {
 	SIZE :: 100_00
 
 	min1 := time.MAX_DURATION
-	for i in 0..<100 {
-		arr1 := make([]Big,SIZE)
+	min2 := time.MAX_DURATION
+	arr1 := make([]Big,SIZE)
+	arr2 := make([]Big,SIZE)
+	defer {
+		delete(arr1)
+		delete(arr2)
+	}
+	for _ in 0..<100 {
 
 		for i in 0..<len(arr1) {
-			// arr1[i] = i
 			arr1[i].ind = rand.int_max(SIZE)
 		}
+		copy(arr2, arr1)
 
 
-		defer {
-			delete(arr1)
-		}
 
 		sum  := 0
 		for a in arr1 {
@@ -85,11 +94,16 @@ test_inplace_big:: proc($size: int) {
 
 		
 		start := time.tick_now()
-		sort.sort_inlined(arr1)
+		sort.sort_inlined_by(arr1, proc(l,r: Big) -> bool{return l.ind < r.ind})
 		end1 := time.tick_since(start)
+		
+		start2 := time.tick_now()
+		slice.sort_by(arr2, proc(l,r: Big) -> bool{return l.ind < r.ind})
+		end2 := time.tick_since(start2)
 
 
 		min1 = min(min1, end1)
+		min2 = min(min2, end2)
 
 		
 
@@ -111,7 +125,7 @@ test_inplace_big:: proc($size: int) {
 		}
 		
 	}
-	fmt.println("size",size," ","_smoothsort: ",min1)
+	fmt.println("size",size," ","inline_sort: ",min1,"_smoothsort: ",min2, f64(min2) / f64(min1))
 
 
 }
@@ -122,17 +136,21 @@ test_highly_ordered :: proc() {
 	SIZE :: 100_000
 
 	min1 := time.MAX_DURATION
-	for i in 0..<100 {
-		arr1 := make([]int,SIZE)
+	min2 := time.MAX_DURATION
+	arr1 := make([]int,SIZE)
+	arr2 := make([]int,SIZE)
+	defer {
+		delete(arr1)
+		delete(arr2)
+	}
+	for _ in 0..<100 {
 
 		for i in 0..<len(arr1) {
 			arr1[i] = rand.int_max(SIZE) %% 10 + i
-			// arr1[i] = i
 		}
+		copy(arr2, arr1)
 
-		defer {
-			delete(arr1)
-		}
+
 
 		sum  := 0
 		for a in arr1 {
@@ -141,13 +159,15 @@ test_highly_ordered :: proc() {
 
 		
 		start := time.tick_now()
-
 		sort.sort_inlined(arr1)
 		end1 := time.tick_since(start)
-
+		
+		start2 := time.tick_now()
+		slice.sort(arr2)
+		end2 := time.tick_since(start2)
 
 		min1 = min(min1, end1)
-
+		min2 = min(min2, end2)
 		
 
 		for a in arr1 {
@@ -162,71 +182,12 @@ test_highly_ordered :: proc() {
 		if !slice.is_sorted(arr1) {
 			fmt.println(arr1)
 			fmt.println(len(arr1))
-			fmt.println(i)
 			
 			panic("not sorted1")
 		}
 		
 	}
-	fmt.println("size",100_000,"  ","_smoothsort: ",min1)
-
-
-}
-
-
-test_many_similar :: proc() {
-	// iter := 2
-
-	SIZE :: 100_000
-
-	min1 := time.MAX_DURATION
-	for i in 0..<100 {
-		arr1 := make([]int,SIZE)
-
-		for i in 0..<len(arr1) {
-			arr1[i] = rand.int_max(SIZE) %% 10
-			// arr1[i] = i
-		}
-
-		defer {
-			delete(arr1)
-		}
-
-		sum  := 0
-		for a in arr1 {
-			sum += a
-		}
-
-		
-		start := time.tick_now()
-
-		sort.sort_inlined(arr1)
-		end1 := time.tick_since(start)
-
-
-		min1 = min(min1, end1)
-
-		
-
-		for a in arr1 {
-			sum -= a
-		}
-
-		if sum != 0 {
-			fmt.println(arr1)
-			panic("sum not right")
-		}
-
-		if !slice.is_sorted(arr1) {
-			fmt.println(arr1)
-			fmt.println(len(arr1))
-			fmt.println(i)
-			
-			panic("not sorted1")
-		}
-		
-	}
-	fmt.println("size",100_000,"  ","_smoothsort: ",min1)
+	fmt.println("size",SIZE," ","inline_sort: ",min1,"_smoothsort: ",min2, f64(min2) / f64(min1))
 
 
 }
@@ -238,16 +199,21 @@ test_random_100_000 :: proc() {
 	SIZE :: 100_000
 
 	min1 := time.MAX_DURATION
-	for i in 0..<100 {
-		arr1 := make([]int,SIZE)
+	min2 := time.MAX_DURATION
+	arr1 := make([]int,SIZE)
+	arr2 := make([]int,SIZE)
+	defer {
+		delete(arr1)
+		delete(arr2)
+	}
+	for _ in 0..<100 {
 
 		for i in 0..<len(arr1) {
 			arr1[i] = rand.int_max(SIZE)
 		}
+		copy(arr2, arr1)
 
-		defer {
-			delete(arr1)
-		}
+
 
 		sum  := 0
 		for a in arr1 {
@@ -256,13 +222,15 @@ test_random_100_000 :: proc() {
 
 		
 		start := time.tick_now()
-
 		sort.sort_inlined(arr1)
 		end1 := time.tick_since(start)
-
+		
+		start2 := time.tick_now()
+		slice.sort(arr2)
+		end2 := time.tick_since(start2)
 
 		min1 = min(min1, end1)
-
+		min2 = min(min2, end2)
 		
 
 		for a in arr1 {
@@ -277,34 +245,38 @@ test_random_100_000 :: proc() {
 		if !slice.is_sorted(arr1) {
 			fmt.println(arr1)
 			fmt.println(len(arr1))
-			fmt.println(i)
 			
 			panic("not sorted1")
 		}
 		
 	}
-	fmt.println("size",100_000,"  ","_smoothsort: ",min1)
+	fmt.println("size",SIZE," ","inline_sort: ",min1,"_smoothsort: ",min2, f64(min2) / f64(min1))
 
 
 }
 
-test_slice_with_data_indecies_100_000 :: proc() {
 
-	data := []int{6,0,4,2,8,9,7,1,3,5}
+test_many_similar :: proc() {
+	// iter := 2
 
 	SIZE :: 100_000
 
 	min1 := time.MAX_DURATION
-	for i in 0..<1 {
-		arr1 := make([]int,SIZE)
+	min2 := time.MAX_DURATION
+	arr1 := make([]int,SIZE)
+	arr2 := make([]int,SIZE)
+	defer {
+		delete(arr1)
+		delete(arr2)
+	}
+	for _ in 0..<100 {
 
 		for i in 0..<len(arr1) {
-			arr1[i] = rand.int_max(SIZE)
+			arr1[i] = rand.int_max(SIZE) %% 10
 		}
+		copy(arr2, arr1)
 
-		defer {
-			delete(arr1)
-		}
+
 
 		sum  := 0
 		for a in arr1 {
@@ -313,7 +285,69 @@ test_slice_with_data_indecies_100_000 :: proc() {
 
 		
 		start := time.tick_now()
+		sort.sort_inlined(arr1)
+		end1 := time.tick_since(start)
+		
+		start2 := time.tick_now()
+		slice.sort(arr2)
+		end2 := time.tick_since(start2)
 
+		min1 = min(min1, end1)
+		min2 = min(min2, end2)
+		
+
+		for a in arr1 {
+			sum -= a
+		}
+
+		if sum != 0 {
+			fmt.println(arr1)
+			panic("sum not right")
+		}
+
+		if !slice.is_sorted(arr1) {
+			fmt.println(arr1)
+			fmt.println(len(arr1))
+			
+			panic("not sorted1")
+		}
+		
+	}
+	fmt.println("size",SIZE," ","inline_sort: ",min1,"_smoothsort: ",min2, f64(min2) / f64(min1))
+
+
+}
+
+
+test_slice_with_data_indecies_100_000 :: proc() {
+
+	data := []int{6,0,4,2,8,9,7,1,3,5}
+
+	SIZE :: 100_000
+
+	min1 := time.MAX_DURATION
+	min2 := time.MAX_DURATION
+	arr1 := make([]int,SIZE)
+	arr2 := make([]int,SIZE)
+	defer {
+		delete(arr1)
+		delete(arr2)
+	}
+	for _ in 0..<10 {
+
+		for i in 0..<len(arr1) {
+			arr1[i] = rand.int_max(SIZE)
+		}
+		copy(arr2, arr1)
+
+
+		sum  := 0
+		for a in arr1 {
+			sum += a
+		}
+
+		
+		start := time.tick_now()
 		sort.sort_inlined_by_with_indices_with_data(arr1, proc(l, r: int, user_data: rawptr)->bool{
 			data := (^[]int)(user_data)
 			return data[l %% 10] < data[r %% 10]
@@ -321,7 +355,16 @@ test_slice_with_data_indecies_100_000 :: proc() {
 		end1 := time.tick_since(start)
 
 
+		start2 := time.tick_now()
+		slice.sort_by_with_indices_with_data(arr2, proc(l, r: int, user_data: rawptr)->bool{
+			data := (^[]int)(user_data)
+			return data[l %% 10] < data[r %% 10]
+		}, &data)
+		end2 := time.tick_since(start2)
+
+
 		min1 = min(min1, end1)
+		min2 = min(min2, end2)
 
 		
 
@@ -336,7 +379,8 @@ test_slice_with_data_indecies_100_000 :: proc() {
 
 		
 	}
-	fmt.println("size",100_000,"  ","_smoothsort: ",min1)
+	fmt.println("size",SIZE," ","inline_sort: ",min1,"_smoothsort: ",min2, f64(min2) / f64(min1))
+
 
 
 }
@@ -350,19 +394,23 @@ test_slice_big_100_00 :: proc() {
 		rand: int,
 		weight: [100]int,
 	}
-	data10_less :: proc(l, r: Data)->bool{return l.rand < r.rand}
+	data_less :: proc(l, r: Data)->bool{return l.rand < r.rand}
 
 	min1 := time.MAX_DURATION
-	for i in 0..<100 {
-		arr1 := make([]Data,SIZE)
+	min2 := time.MAX_DURATION
+	arr1 := make([]Data,SIZE)
+	arr2 := make([]Data,SIZE)
+	defer {
+		delete(arr1)
+		delete(arr2)
+	}
+	for _ in 0..<100 {
 
 		for i in 0..<len(arr1) {
 			arr1[i].rand = rand.int_max(SIZE)
 		}
+		copy(arr2, arr1)
 
-		defer {
-			delete(arr1)
-		}
 
 		sum  := 0
 		for a in arr1 {
@@ -371,12 +419,16 @@ test_slice_big_100_00 :: proc() {
 
 		
 		start := time.tick_now()
-
-		sort.sort_inlined_by(arr1, data10_less)
+		sort.sort_inlined_by(arr1, data_less)
 		end1 := time.tick_since(start)
+		
+		start2 := time.tick_now()
+		slice.sort_by(arr2, data_less)
+		end2 := time.tick_since(start2)
 
 
 		min1 = min(min1, end1)
+		min2 = min(min2, end2)
 
 		
 
@@ -390,77 +442,51 @@ test_slice_big_100_00 :: proc() {
 		}
 
 
-		if !slice.is_sorted_by(arr1, data10_less) {
+		if !slice.is_sorted_by(arr1, data_less) {
 			fmt.println(arr1)
 			fmt.println(len(arr1))
-			fmt.println(i)
 			
 			panic("not sorted1")
 		}
 		
 	}
-	fmt.println("size",100_000,"  ","_smoothsort: ",min1)
+	fmt.println("size",SIZE," ","inline_sort: ",min1,"_smoothsort: ",min2, f64(min2) / f64(min1))
+
 
 
 }
 
-
-
-test_sort_qsort :: proc(size: i64) {
-	min1 := max(i64)
-	// iter := 2
-	iter := clamp(1_000_000 / size, 4, 10_000)
-
-	for i in 0..<iter {
-		arr1 := make([]int,size)
-		for i in 0..<len(arr1) {
-			arr1[i] = rand.int_max(int(size))
-		}
-
-		defer {
-			delete(arr1)
-		}
-
-		start := intrinsics.read_cycle_counter()
-		sort.sort_inlined(arr1)
-		end1 := intrinsics.read_cycle_counter() - start
-
-
-
-		min1 = min(min1, end1)
-
-		if !slice.is_sorted(arr1) {
-			fmt.println(arr1)
-			panic("not sorted1")
-		}
-	}
-
-	sizelg := size
-
-	fmt.println("iter",iter,"size",size," in cycles / item ","sort: ",min1 / sizelg, )
-}
 
 test_indices :: proc(size: i64) {
 	Test :: int
+	min1 := max(i64)
 	min2 := max(i64)
 	// iter := 2
 	iter := clamp(1_000_000 / size, 4, 10_000)
 
-	for i in 0..<iter {
-		arr1 := make([]Test,size)
+	arr1 := make([]Test,size)
+	arr2 := make([]Test,size)
+
+	defer {
+		delete(arr1)
+		delete(arr2)
+	}
+	for _ in 0..<iter {
 		for i in 0..<len(arr1) {
 			arr1[i] = rand.int_max(int(size))
 		}
+		copy(arr2, arr1)
 
-		defer {
-			delete(arr1)
-		}
 
+		start1 := intrinsics.read_cycle_counter()
+		sort.sort_inlined_with_indices(arr1)
+		end1 := intrinsics.read_cycle_counter() - start1
 
 		start2 := intrinsics.read_cycle_counter()
-		sort.sort_inlined_with_indices(arr1)
+		slice.sort_with_indices(arr2)
 		end2 := intrinsics.read_cycle_counter() - start2
 
+		min1 = min(min1, end1)
 		min2 = min(min2, end2)
 
 		if !slice.is_sorted(arr1) {
@@ -470,31 +496,40 @@ test_indices :: proc(size: i64) {
 
 	sizelg := size
 
-	fmt.println("iter",iter,"size",size," in cycles / item ","sort.sort_inlined: ",min2 / sizelg)
+	fmt.println("size",size," ","inline_sort: ",min1 / size,"_smoothsort: ",min2 / size,"    diff:   ", f64(min2) / f64(min1))
 }
 
 less10 ::  proc(l,r:[10]int)->bool{return l[0] < r[0]}
 test_indices_by :: proc(size: i64) {
 	Test :: [10]int
+	min1 := max(i64)
 	min2 := max(i64)
 	// iter := 2
 	iter := clamp(1_000_000 / size, 4, 10_000)
+	arr1 := make([]Test,size)
+	arr2 := make([]Test,size)
+	defer {
+		delete(arr1)
+		delete(arr2)
+	}
 
-	for i in 0..<iter {
-		arr1 := make([]Test,size)
+	for _ in 0..<iter {
 		for i in 0..<len(arr1) {
 			arr1[i][0] = rand.int_max(int(size))
 		}
+		copy(arr2, arr1)
 
-		defer {
-			delete(arr1)
-		}
 
+
+		start1 := intrinsics.read_cycle_counter()
+		sort.sort_inlined_by_with_indices(arr1, less10)
+		end1 := intrinsics.read_cycle_counter() - start1
 
 		start2 := intrinsics.read_cycle_counter()
-		sort.sort_inlined_by_with_indices(arr1, less10)
+		slice.sort_by_with_indices(arr2, less10)
 		end2 := intrinsics.read_cycle_counter() - start2
 
+		min1 = min(min1, end1)
 		min2 = min(min2, end2)
 
 		if !slice.is_sorted_by(arr1,less10) {
@@ -504,5 +539,52 @@ test_indices_by :: proc(size: i64) {
 
 	sizelg := size
 
-	fmt.println("iter",iter,"size",size," in cycles / item ","sort.sort_inlined: ",min2 / sizelg)
+		fmt.println("size",size," ","inline_sort: ",min1 / size,"_smoothsort: ",min2 / size,"    diff:   ", f64(min2) / f64(min1))
+
+}
+
+
+test_random :: proc(size: i64) {
+	// iter := 2
+	iter := clamp(1_000_000 / size, 10, 10_000)
+	min1 := make([]i64, iter)
+	min2 := make([]i64, iter)
+	arr1 := make([]int,size)
+	arr2 := make([]int,size)
+	defer {
+		delete(arr1)
+		delete(arr2)
+	}
+
+	for j in 0..<iter {
+		for i in 0..<len(arr1) {
+			arr1[i] = rand.int_max(int(size))
+		}
+		copy(arr2, arr1)
+
+
+
+		start1 := intrinsics.read_cycle_counter()
+		sort.sort_inlined(arr1)
+		end1 := intrinsics.read_cycle_counter() - start1
+
+		start2 := intrinsics.read_cycle_counter()
+		slice.sort(arr2)
+		end2 := intrinsics.read_cycle_counter() - start2
+
+		min1[j] = end1
+		min2[j] = end2
+
+		if !slice.is_sorted(arr1) {
+			panic("not sorted1")
+		}
+	}
+
+	sizelg := size
+
+	median1 := min1[iter / 2]
+	median2 := min2[iter / 2]
+
+	fmt.println("size",size," ","inline_sort: ",median1 / size,"_smoothsort: ",median2 / size,"    diff:   ", f64(median2) / f64(median1))
+
 }

@@ -85,8 +85,7 @@ test_inplace_big:: proc($size: int) {
 
 		
 		start := time.tick_now()
-		sort_inplace_by(arr1, proc(l,r: Big) -> bool{return l.ind < r.ind})
-		// sort.sort_inlined(arr1)
+		sort.sort_inlined(arr1)
 		end1 := time.tick_since(start)
 
 
@@ -142,7 +141,7 @@ test_highly_ordered :: proc() {
 
 		
 		start := time.tick_now()
-		// min_qsort(arr1)
+
 		sort.sort_inlined(arr1)
 		end1 := time.tick_since(start)
 
@@ -200,7 +199,7 @@ test_many_similar :: proc() {
 
 		
 		start := time.tick_now()
-		// min_qsort(arr1)
+
 		sort.sort_inlined(arr1)
 		end1 := time.tick_since(start)
 
@@ -257,7 +256,7 @@ test_random_100_000 :: proc() {
 
 		
 		start := time.tick_now()
-		// quick_sort(arr1)
+
 		sort.sort_inlined(arr1)
 		end1 := time.tick_since(start)
 
@@ -314,7 +313,7 @@ test_slice_with_data_indecies_100_000 :: proc() {
 
 		
 		start := time.tick_now()
-		// quick_sort(arr1)
+
 		sort.sort_inlined_by_with_indices_with_data(arr1, proc(l, r: int, user_data: rawptr)->bool{
 			data := (^[]int)(user_data)
 			return data[l %% 10] < data[r %% 10]
@@ -372,7 +371,7 @@ test_slice_big_100_00 :: proc() {
 
 		
 		start := time.tick_now()
-		// quick_sort(arr1)
+
 		sort.sort_inlined_by(arr1, data10_less)
 		end1 := time.tick_since(start)
 

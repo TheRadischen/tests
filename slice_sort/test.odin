@@ -1,6 +1,5 @@
 package msort
 
-import "core:sort"
 import "core:time"
 import "core:math/rand"
 import "core:slice"
@@ -9,13 +8,12 @@ import "base:intrinsics"
 import "core:fmt"
 
 
-
 main :: proc() {
 
 
 	arr := make([]f32, 100)
 
-	sort.sort_inlined(arr)
+	slice.sort(arr)
 	fmt.println(arr[:1])
 
 
@@ -86,7 +84,7 @@ test_inplace_big:: proc($size: int) {
 		
 		start := time.tick_now()
 		sort_inplace_by(arr1, proc(l,r: Big) -> bool{return l.ind < r.ind})
-		// sort.sort_inlined(arr1)
+		// slice.sort(arr1)
 		end1 := time.tick_since(start)
 
 
@@ -143,7 +141,7 @@ test_highly_ordered :: proc() {
 		
 		start := time.tick_now()
 		// min_qsort(arr1)
-		sort.sort_inlined(arr1)
+		slice.sort(arr1)
 		end1 := time.tick_since(start)
 
 
@@ -201,7 +199,7 @@ test_many_similar :: proc() {
 		
 		start := time.tick_now()
 		// min_qsort(arr1)
-		sort.sort_inlined(arr1)
+		slice.sort(arr1)
 		end1 := time.tick_since(start)
 
 
@@ -258,7 +256,7 @@ test_random_100_000 :: proc() {
 		
 		start := time.tick_now()
 		// quick_sort(arr1)
-		sort.sort_inlined(arr1)
+		slice.sort(arr1)
 		end1 := time.tick_since(start)
 
 
@@ -296,7 +294,7 @@ test_slice_with_data_indecies_100_000 :: proc() {
 	SIZE :: 100_000
 
 	min1 := time.MAX_DURATION
-	for i in 0..<1 {
+	for i in 0..<10 {
 		arr1 := make([]int,SIZE)
 
 		for i in 0..<len(arr1) {
@@ -315,8 +313,8 @@ test_slice_with_data_indecies_100_000 :: proc() {
 		
 		start := time.tick_now()
 		// quick_sort(arr1)
-		sort.sort_inlined_by_with_indices_with_data(arr1, proc(l, r: int, user_data: rawptr)->bool{
-			data := (^[]int)(user_data)
+		slice.sort_by_with_indices_with_data(arr1, proc(l, r: int, user_data: rawptr)->bool{
+			data := cast(^[]int)(user_data)
 			return data[l %% 10] < data[r %% 10]
 		}, &data)
 		end1 := time.tick_since(start)
@@ -373,7 +371,7 @@ test_slice_big_100_00 :: proc() {
 		
 		start := time.tick_now()
 		// quick_sort(arr1)
-		sort.sort_inlined_by(arr1, data10_less)
+		slice.sort_by(arr1, data10_less)
 		end1 := time.tick_since(start)
 
 
@@ -423,7 +421,7 @@ test_sort_qsort :: proc(size: i64) {
 		}
 
 		start := intrinsics.read_cycle_counter()
-		sort.sort_inlined(arr1)
+		slice.sort(arr1)
 		end1 := intrinsics.read_cycle_counter() - start
 
 
@@ -459,7 +457,7 @@ test_indices :: proc(size: i64) {
 
 
 		start2 := intrinsics.read_cycle_counter()
-		sort.sort_inlined_with_indices(arr1)
+		slice.sort_with_indices(arr1)
 		end2 := intrinsics.read_cycle_counter() - start2
 
 		min2 = min(min2, end2)
@@ -471,7 +469,7 @@ test_indices :: proc(size: i64) {
 
 	sizelg := size
 
-	fmt.println("iter",iter,"size",size," in cycles / item ","sort.sort_inlined: ",min2 / sizelg)
+	fmt.println("iter",iter,"size",size," in cycles / item ","slice.sort: ",min2 / sizelg)
 }
 
 less10 ::  proc(l,r:[10]int)->bool{return l[0] < r[0]}
@@ -493,7 +491,7 @@ test_indices_by :: proc(size: i64) {
 
 
 		start2 := intrinsics.read_cycle_counter()
-		sort.sort_inlined_by_with_indices(arr1, less10)
+		slice.sort_by_with_indices(arr1, less10)
 		end2 := intrinsics.read_cycle_counter() - start2
 
 		min2 = min(min2, end2)
@@ -505,5 +503,5 @@ test_indices_by :: proc(size: i64) {
 
 	sizelg := size
 
-	fmt.println("iter",iter,"size",size," in cycles / item ","sort.sort_inlined: ",min2 / sizelg)
+	fmt.println("iter",iter,"size",size," in cycles / item ","slice.sort: ",min2 / sizelg)
 }
